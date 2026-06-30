@@ -1,0 +1,37 @@
+SHELL := /bin/bash
+GO ?= go
+
+.PHONY: help run build test tidy lint migrate-up migrate-down migrate-status compose-up compose-down
+
+help: ## Show available targets
+	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n",$$1,$$2}'
+
+run: ## Run the HTTP server (serve)
+	$(GO) run . serve
+
+build: ## Build the binary into bin/
+	$(GO) build -o bin/{{.Name}} .
+
+test: ## Run unit tests (short, race)
+	$(GO) test -short -race ./...
+
+tidy: ## go mod tidy
+	$(GO) mod tidy
+
+lint: ## Run golangci-lint
+	golangci-lint run ./...
+
+migrate-up: ## Apply all pending migrations
+	$(GO) run . migrate up
+
+migrate-down: ## Roll back the last migration
+	$(GO) run . migrate down
+
+migrate-status: ## Show migration status
+	$(GO) run . migrate status
+
+compose-up: ## Start local infra (postgres + rabbitmq)
+	docker compose up -d
+
+compose-down: ## Stop local infra
+	docker compose down

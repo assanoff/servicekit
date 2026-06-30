@@ -1,0 +1,10 @@
+module {{.Module}}
+
+go 1.26
+{{if .Replace}}
+require github.com/assanoff/skit v0.0.0
+
+replace github.com/assanoff/skit => {{.Replace}}
+{{else if .SDKRequire}}
+require github.com/assanoff/skit {{.SDKVersion}}
+{{end}}

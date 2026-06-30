@@ -13,6 +13,8 @@ var version = "dev"
 type newCommand struct {
 	Dir        string `long:"dir" description:"target directory (default: last element of the module path)"`
 	Template   string `long:"template" description:"gonew template module; delegates to gonew when set"`
+	Full       bool   `long:"full" description:"scaffold the full HTTP service bootstrap (config/deps/server/cmd/migrations + docker-compose), not just the minimal starter"`
+	Replace    string `long:"replace" description:"local skit path for a go.mod replace directive, e.g. ../skit (for co-developing the SDK alongside the service)"`
 	SDKVersion string `long:"sdk-version" default:"latest" description:"skit version for go.mod (\"latest\" omits the require — run go mod tidy)"`
 	Args       struct {
 		Module string `positional-arg-name:"module-path" description:"new module path, e.g. github.com/you/svc"`
@@ -25,6 +27,8 @@ func (c *newCommand) Execute([]string) error {
 		Dir:        c.Dir,
 		SDKVersion: c.SDKVersion,
 		Template:   c.Template,
+		Full:       c.Full,
+		Replace:    c.Replace,
 	})
 }
 

@@ -1,0 +1,77 @@
+// Package config defines the service configuration as a single go-flags options
+// struct. Each field maps to a CLI flag (long), an environment variable (env,
+// namespaced per group), a default, and a --help description.
+package config
+
+import "time"
+
+// ServerOpts is the full service configuration. Groups are namespaced so their
+// env vars read as HTTP_ADDR, DB_USER, OTEL_ENABLED, BROKER_ENABLED, etc.
+type ServerOpts struct {
+	Service  string `long:"service-name" env:"SERVICE_NAME" default:"{{.Name}}" description:"service name"`
+	Env      string `long:"app-env"      env:"APP_ENV"      default:"development"        description:"runtime environment"`
+	LogLevel string `long:"log-level"    env:"LOG_LEVEL"    default:"info"               description:"log level: debug|info|warn|error"`
+
+	HTTP   HTTP   `group:"http" namespace:"http" env-namespace:"HTTP"`
+	Debug  Debug  `group:"debug" namespace:"debug" env-namespace:"DEBUG"`
+	DB     DB     `group:"postgres" namespace:"db" env-namespace:"DB"`
+	OTEL   OTEL   `group:"otel" namespace:"otel" env-namespace:"OTEL"`
+	Worker Worker `group:"worker" namespace:"worker" env-namespace:"WORKER"`
+	Broker Broker `group:"broker" namespace:"broker" env-namespace:"BROKER"`
+}
+
+// HTTP holds REST server settings. The server starts iff Addr is non-empty, so
+// an empty ADDR (HTTP_ADDR=) turns the transport off without a separate flag.
+type HTTP struct {
+	Addr              string        `long:"addr"                env:"ADDR"                default:":8080"   description:"REST listen address (empty disables the REST server)"`
+	ReadHeaderTimeout time.Duration `long:"read-header-timeout" env:"READ_HEADER_TIMEOUT" default:"5s"      description:"read header timeout"`
+	RequestTimeout    time.Duration `long:"request-timeout"     env:"REQUEST_TIMEOUT"     default:"30s"     description:"per-request timeout"`
+	ShutdownTimeout   time.Duration `long:"shutdown-timeout"    env:"SHUTDOWN_TIMEOUT"    default:"10s"     description:"graceful shutdown timeout"`
+	BodySizeLimit     int64         `long:"body-size-limit"     env:"BODY_SIZE_LIMIT"     default:"1048576" description:"max request body size in bytes"`
+}
+
+// Debug serves the status endpoints (pprof + metrics + health) on their own
+// internal port. Starts iff Addr is non-empty.
+type Debug struct {
+	Addr string `long:"addr" env:"ADDR" default:"localhost:6060" description:"status listen address — pprof, metrics, health (empty disables it)"`
+}
+
+// DB holds Postgres connection settings.
+type DB struct {
+	User         string `long:"user"           env:"USER"           default:"postgres"       description:"postgres user"          json:"-"`
+	Password     string `long:"password"       env:"PASSWORD"       default:"postgres"       description:"postgres password"      json:"-"`
+	Host         string `long:"host"           env:"HOST"           default:"localhost:5432" description:"postgres host:port"     json:"-"`
+	Name         string `long:"name"           env:"NAME"           default:"{{.Snake}}"     description:"postgres database name" json:"-"`
+	Schema       string `long:"schema"         env:"SCHEMA"         default:"public"         description:"postgres schema"        json:"-"`
+	MaxIdleConns int    `long:"max-idle-conns" env:"MAX_IDLE_CONNS" default:"5"              description:"max idle connections"`
+	MaxOpenConns int    `long:"max-open-conns" env:"MAX_OPEN_CONNS" default:"20"             description:"max open connections"`
+	DisableTLS   bool   `long:"disable-tls"    env:"DISABLE_TLS"    description:"disable TLS to the database (set for local dev)"`
+}
+
+// OTEL holds tracing settings. Off by default.
+type OTEL struct {
+	Enabled     bool    `long:"enabled"     env:"ENABLED"     description:"enable OpenTelemetry tracing"`
+	Endpoint    string  `long:"endpoint"    env:"ENDPOINT"    default:"localhost:4317" description:"OTLP/gRPC collector endpoint"`
+	Insecure    bool    `long:"insecure"    env:"INSECURE"    description:"disable TLS to the collector"`
+	Probability float64 `long:"probability" env:"PROBABILITY" default:"1.0"            description:"trace sampling probability"`
+}
+
+// Worker holds background-processing settings. On by default; disabled via its
+// kill-switch.
+type Worker struct {
+	Disabled bool          `long:"disabled" env:"DISABLED" description:"disable background workers"`
+	Interval time.Duration `long:"interval" env:"INTERVAL" default:"1s" description:"worker poll interval"`
+}
+
+// Broker holds RabbitMQ + transactional-outbox settings. OFF by default
+// (brokers need external infra). When disabled no relay/consumer runs and the
+// outbox providers stay nil.
+type Broker struct {
+	Enabled  bool   `long:"enabled"  env:"ENABLED"  description:"enable RabbitMQ + transactional outbox"`
+	User     string `long:"user"     env:"USER"     default:"guest"             description:"rabbitmq user"     json:"-"`
+	Password string `long:"password" env:"PASSWORD" default:"guest"             description:"rabbitmq password" json:"-"`
+	Host     string `long:"host"     env:"HOST"     default:"localhost"         description:"rabbitmq host"`
+	Port     string `long:"port"     env:"PORT"     default:"5672"              description:"rabbitmq port"`
+	Source   string `long:"source"   env:"SOURCE"   default:"{{.Name}}"         description:"CloudEvents source"`
+	Exchange string `long:"exchange" env:"EXCHANGE" default:"{{.Snake}}.events" description:"events exchange"`
+}

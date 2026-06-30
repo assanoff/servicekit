@@ -1,0 +1,15 @@
+package cmd
+
+import "fmt"
+
+// version is overridable at build time with -ldflags "-X '{{.Module}}/internal/cmd.version=...'".
+var version = "dev"
+
+// VersionCommand prints the build version.
+type VersionCommand struct{}
+
+// Execute implements flags.Commander.
+func (VersionCommand) Execute([]string) error {
+	fmt.Println("{{.Name}}", version)
+	return nil
+}
